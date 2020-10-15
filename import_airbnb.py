@@ -16,12 +16,11 @@ def create_table(sql_con):
     create_accommodation = """
     create table accommodation
     (
-        id                 INTEGER not null
-            primary key
-            unique,
-        name               TEXT    not null,
-        summary            TEXT default '' not null,
-        url                TEXT    not null,
+        id                 INTEGER
+            primary key,
+        name               text,
+        summary            text,
+        url                text,
         review_score_value INTEGER
     );
     """
@@ -30,8 +29,9 @@ def create_table(sql_con):
     create table amenities
     (
         accommodation_id INTEGER
-            references accommodation,
-        type             TEXT
+            references accommodation(id),
+        type             text,
+        primary key (accommodation_id, type)
     );
     """
 
@@ -40,10 +40,10 @@ def create_table(sql_con):
     (
         host_id       INTEGER
             primary key,
-        host_url      TEXT not null,
-        host_name     TEXT not null,
-        host_about    TEXT default '' not null,
-        host_location TEXT not null
+        host_url      TEXT,
+        host_name     TEXT,
+        host_about    TEXT,
+        host_location TEXT
     );
     """
 
@@ -51,9 +51,10 @@ def create_table(sql_con):
     create table host_accommodation
     (
         host_id          INTEGER
-            references host,
+            references host(host_id),
         accommodation_id INTEGER
-            references accommodation
+            references accommodation(id), 
+        primary key (host_id, accommodation_id)
     );
     """
 
@@ -62,19 +63,21 @@ def create_table(sql_con):
     (
         id               INTEGER
             primary key autoincrement,
-        rid              INTEGER,
-        comment          TEXT default '' not null,
+        rid              INTEGER
+            references reviewer(rid),
+        comment          TEXT,
         datetime         TEXT,
         accommodation_id INTEGER
-            references accommodation
+            references accommodation(id)
     );
     """
 
     create_reviewer = """
     create table reviewer
     (
-        rid   INTEGER,
-        rname TEXT
+        rid   INTEGER
+            primary key,
+        rname text
     );
     """
 
@@ -129,7 +132,7 @@ def insert_review(cursor, accommodation_id, review_data):
     reviews = []
     reviewers = []
     for review in review_data:
-        reviews.append((review['_id'], review['comments'], review['date']['$date'], accommodation_id))
+        reviews.append((review['reviewer_id'], review['comments'], review['date']['$date'], accommodation_id))
         reviewers.append((review['reviewer_id'], review['reviewer_name']))
 
     cursor.executemany('INSERT INTO review (rid, comment, datetime, accommodation_id) VALUES (?, ?, ?, ?)', reviews)
@@ -160,7 +163,7 @@ def update_database(sql_con, single_data):
     insert_host(cursor, single_data['host'])
 
     # 插入 host_accommodation
-    insert_host_accommodation(cursor, single_data['_id'], single_data['host']['host_id'])
+    insert_host_accommodation(cursor, single_data['host']['host_id'], single_data['_id'])
 
     # 插入 review 和 reviewer
     insert_review(cursor, single_data['_id'], single_data['reviews'])
@@ -169,7 +172,7 @@ def update_database(sql_con, single_data):
 
 
 def start():
-    data = get_json_data('../SQLiteTest01/airbnb.json')
+    data = get_json_data('./airbnb.json')
     conn = sqlite3.connect('./airbnb.db')
     create_table(conn)
 
